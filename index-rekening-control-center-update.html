@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rekening Control Center</title>
+<style>
+:root{--bg:#f4f7fb;--card:#fff;--text:#152033;--muted:#6b778c;--line:#e6ebf2;--brand:#2563eb;--brand2:#0f4fc8;--danger:#dc2626;--ok:#16a34a;--warn:#d97706;--shadow:0 12px 35px rgba(15,23,42,.08)}
+*{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#eef4ff 0,#f7f9fc 260px);color:var(--text)}
+.app{max-width:1380px;margin:auto;padding:28px} .top{display:flex;justify-content:space-between;gap:20px;align-items:center;margin-bottom:22px}
+.brand h1{margin:0;font-size:30px} .brand p{margin:6px 0 0;color:var(--muted)}
+.badge{background:#e8f0ff;color:#174fb5;padding:9px 13px;border-radius:999px;font-weight:700}
+.nav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px} .nav button{border:0;background:#fff;color:#46556d;padding:11px 15px;border-radius:10px;cursor:pointer;box-shadow:0 2px 10px rgba(15,23,42,.05);font-weight:700}
+.nav button.active{background:var(--brand);color:#fff}
+.panel{display:none} .panel.active{display:block}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow)} .stat .n{font-size:28px;font-weight:800;margin-top:8px} .stat .t{color:var(--muted);font-size:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px} .section-title{font-size:18px;font-weight:800;margin:0 0 14px}
+textarea,input,select{width:100%;border:1px solid #d9e0ea;border-radius:10px;padding:12px 13px;font:inherit;outline:none;background:#fff} textarea:focus,input:focus,select:focus{border-color:#7aa7ff;box-shadow:0 0 0 3px #e8f0ff}
+textarea{min-height:240px;resize:vertical} .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.btn{border:0;border-radius:10px;padding:11px 15px;font-weight:800;cursor:pointer} .primary{background:var(--brand);color:#fff} .secondary{background:#eef3fb;color:#263a59} .danger{background:#feecec;color:#b42318} .success{background:#eaf8ef;color:#0f7a36}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px} table{width:100%;border-collapse:collapse;background:#fff} th,td{padding:12px 13px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap} th{background:#f8fafc;font-size:12px;color:#536179;text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0} td{font-size:14px}
+.tag{display:inline-block;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:800} .tag-active{background:#e9f8ee;color:#15723a} .tag-problem{background:#ffeded;color:#b42318} .tag-return{background:#fff3dd;color:#a15c00} .tag-unknown{background:#edf1f6;color:#526175}
+.toolbar{display:grid;grid-template-columns:2fr 1fr auto;gap:10px;margin-bottom:12px} .count{color:var(--muted);font-size:13px;margin:8px 0}
+.iconbtn{border:0;border-radius:8px;padding:8px 10px;cursor:pointer;font-weight:700} .edit{background:#edf4ff;color:#1d4ed8} .del{background:#feecec;color:#b42318}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.42);display:none;align-items:center;justify-content:center;padding:20px;z-index:50} .modal.show{display:flex} .modal-card{background:#fff;border-radius:18px;padding:20px;width:min(560px,100%);box-shadow:0 30px 80px rgba(15,23,42,.25)} .modal-card h3{margin-top:0} .form-grid{display:grid;gap:12px}
+.notice{padding:12px 14px;border-radius:10px;background:#eef6ff;color:#245291;font-size:13px;margin-bottom:14px}
+.matched-card{border:1px solid #bfd4ff;background:linear-gradient(180deg,#f8fbff,#ffffff)}
+.matched-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.matched-title-wrap{display:flex;align-items:center;gap:10px}
+.matched-dot{width:12px;height:12px;border-radius:50%;background:#2563eb;box-shadow:0 0 0 5px #e8f0ff}
+.matched-total{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:28px;padding:0 10px;border-radius:999px;background:#2563eb;color:#fff;font-weight:800}
+.matched-row-active{background:#f7fff9}
+.matched-row-problem{background:#fff7f7}
+.matched-row-return{background:#fffaf0}
+.match-account{font-weight:900;color:#14213d}
+.copy-ok{background:#eaf8ef!important;color:#0f7a36!important}
+@media(max-width:900px){.cards{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr}}
+@media(max-width:520px){.cards{grid-template-columns:1fr}.app{padding:15px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top">
+    <div class="brand"><h1>Rekening Control Center</h1><p>Crosscheck laporan, kelola rekening aktif/bermasalah, dan simpan perubahan otomatis.</p></div>
+    <div class="badge" id="dbBadge">Database siap</div>
+  </div>
+
+  <div class="nav">
+    <button class="active" data-tab="dashboard">Dashboard</button>
+    <button data-tab="crosscheck">Crosscheck Laporan</button>
+    <button data-tab="manage">Kelola Rekening</button>
+    <button data-tab="backup">Backup / Restore</button>
+  </div>
+
+  <section id="dashboard" class="panel active">
+    <div class="cards">
+      <div class="card stat"><div class="t">TOTAL DATA REKENING</div><div class="n" id="statTotal">0</div></div>
+      <div class="card stat"><div class="t">REKENING AKTIF</div><div class="n" id="statActive">0</div></div>
+      <div class="card stat"><div class="t">BERMASALAH</div><div class="n" id="statProblem">0</div></div>
+      <div class="card stat"><div class="t">DIKEMBALIKAN KE ADM</div><div class="n" id="statReturned">0</div></div>
+    </div>
+    <div class="card">
+      <h3 class="section-title">Ringkasan per kategori</h3>
+      <div class="table-wrap"><table><thead><tr><th>Kategori</th><th>Jumlah</th><th>Status</th></tr></thead><tbody id="summaryBody"></tbody></table></div>
+    </div>
+  </section>
+
+  <section id="crosscheck" class="panel">
+    <div class="grid2">
+      <div class="card">
+        <h3 class="section-title">Tempel laporan baru</h3>
+        <div class="notice">Database rekening milik Anda sudah tersimpan di aplikasi. Ke depannya cukup tempel laporan baru di sini.</div>
+        <textarea id="reportInput" placeholder="Tempel laporan baru dari ADM / situs di sini..."></textarea>
+        <div class="actions">
+          <button class="btn primary" onclick="processReport()">Mulai Crosscheck</button>
+          <button class="btn secondary" onclick="document.getElementById('reportInput').value=''">Bersihkan</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3 class="section-title">Ringkasan hasil</h3>
+        <div class="cards" style="grid-template-columns:1fr 1fr;margin:0">
+          <div class="card stat"><div class="t">Nomor terdeteksi</div><div class="n" id="rDetected">0</div></div>
+          <div class="card stat"><div class="t">Rekening milik kita terdeteksi</div><div class="n" id="rMatched">0</div></div>
+          <div class="card stat"><div class="t">Bukan database kita</div><div class="n" id="rUnknown">0</div></div>
+          <div class="card stat"><div class="t">Bermasalah / kembali</div><div class="n" id="rAlert">0</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card matched-card" id="matchedSection" style="display:none;margin-top:18px">
+      <div class="matched-head">
+        <div>
+          <div class="matched-title-wrap">
+            <span class="matched-dot"></span>
+            <h3 class="section-title" style="margin:0">Rekening Milik Kita yang Terdeteksi</h3>
+            <span class="matched-total" id="matchedTotalBadge">0</span>
+          </div>
+          <div class="count" id="matchedInfo">0 rekening ditemukan dari laporan baru.</div>
+        </div>
+        <button class="btn secondary" id="copyMatchedBtn" onclick="copyMatched()">Copy Data Terdeteksi</button>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Nama</th>
+              <th>No. Rekening</th>
+              <th>Kategori</th>
+              <th>Status</th>
+              <th>Potongan Laporan</th>
+            </tr>
+          </thead>
+          <tbody id="matchedBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h3 class="section-title">Hasil Crosscheck Lengkap</h3>
+      <div class="table-wrap"><table><thead><tr><th>No. Rekening</th><th>Nama</th><th>Kategori</th><th>Status</th><th>Potongan Laporan</th></tr></thead><tbody id="resultBody"><tr><td colspan="5" style="color:#7b8798">Belum ada proses crosscheck.</td></tr></tbody></table></div>
+    </div>
+  </section>
+
+  <section id="manage" class="panel">
+    <div class="card">
+      <div class="toolbar">
+        <input id="searchInput" placeholder="Cari nama atau nomor rekening..." oninput="renderManage()">
+        <select id="categoryFilter" onchange="renderManage()"><option value="">Semua kategori</option></select>
+        <button class="btn primary" onclick="openAdd()">+ Tambah Rekening</button>
+      </div>
+      <div class="count" id="manageCount"></div>
+      <div class="table-wrap" style="max-height:620px"><table><thead><tr><th>Nama</th><th>Nomor Rekening</th><th>Kategori</th><th>Status</th><th>Aksi</th></tr></thead><tbody id="manageBody"></tbody></table></div>
+    </div>
+  </section>
+
+  <section id="backup" class="panel">
+    <div class="grid2">
+      <div class="card">
+        <h3 class="section-title">Backup Database</h3>
+        <p style="color:var(--muted)">Perubahan tambah/hapus/edit disimpan di browser ini menggunakan localStorage. Download backup agar aman jika pindah komputer/browser.</p>
+        <div class="actions"><button class="btn primary" onclick="exportData()">Download Backup JSON</button></div>
+      </div>
+      <div class="card">
+        <h3 class="section-title">Restore Database</h3>
+        <input type="file" id="restoreFile" accept=".json">
+        <div class="actions"><button class="btn success" onclick="restoreData()">Restore</button><button class="btn danger" onclick="resetDefault()">Reset ke Data Awal</button></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="modal" id="editModal">
+  <div class="modal-card">
+    <h3 id="modalTitle">Tambah Rekening</h3>
+    <div class="form-grid">
+      <input id="fName" placeholder="Nama pemilik rekening">
+      <input id="fAccount" placeholder="Nomor rekening" inputmode="numeric">
+      <select id="fCategory"></select>
+      <div class="actions"><button class="btn primary" onclick="saveEntry()">Simpan</button><button class="btn secondary" onclick="closeModal()">Batal</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DEFAULT_DATA = {"REKENING DEPOSIT AKTIF": [{"name": "Sandi Ruswandi", "account": "0542648862"}, {"name": "RIZKY PRASITIYO", "account": "5370540570"}, {"name": "ASRI LESTARI", "account": "8851235078"}, {"name": "DEA MAULIDINA AZHARI", "account": "6920312665"}, {"name": "ASEP HIDAYAT", "account": "8670933653"}, {"name": "Relinawati", "account": "7635744448"}, {"name": "SARIPUDIN", "account": "5877060042"}, {"name": "SALIM", "account": "0740190890"}, {"name": "SELAMET", "account": "8060239933"}, {"name": "ARTI NOVIANTI", "account": "5850440052"}, {"name": "Sukandar", "account": "2024752201"}, {"name": "Dino Zoff Fairus Isa", "account": "2023928518"}, {"name": "ANI PARWATI", "account": "2010364870"}, {"name": "HADAD HARDIANTO", "account": "040501059788506"}, {"name": "SANDANG PRIYATNA", "account": "060001015112503"}, {"name": "AGUS SOLIHIN", "account": "213601012543508"}, {"name": "JANDIKA PREDIKA", "account": "095201004310505"}, {"name": "DONI YAN HERI SAPUTRA", "account": "463101016969530"}, {"name": "Riska Febriany", "account": "012001290064505"}, {"name": "Dicky Suwandana", "account": "112901039117500"}, {"name": "RISKA", "account": "001901095077504"}, {"name": "INTAN LALA FEBRIANTI", "account": "331201004071500"}, {"name": "FAUZI RAHMADANI", "account": "037901057181503"}, {"name": "MAMAY", "account": "092201044842539"}], "REKENING AKTIF WITHDRAW (BANK BERSIH)": [{"name": "I KOMANG NATA ANDIKA", "account": "3420758684"}, {"name": "RIZKI IRMA MAULANA", "account": "1790365107"}, {"name": "M Rival Pratama", "account": "0690657953"}, {"name": "Arjun Diningrat", "account": "8660496565"}, {"name": "Iskandar", "account": "0690669510"}, {"name": "Fahrunnisa", "account": "5212474037"}, {"name": "Feri Hirawan", "account": "8780533707"}, {"name": "Iqbal Mutaqin", "account": "7120801648"}, {"name": "Rian Dicky Anggara", "account": "5776598891"}, {"name": "I NYOMAN YONATHAN DANIEL", "account": "6115956365"}, {"name": "Akbar", "account": "5875795284"}, {"name": "Fahrel Ramadhan", "account": "0690671859"}, {"name": "Deni Lukas Permana", "account": "7753182791"}, {"name": "Isnawati", "account": "5295319655"}, {"name": "NI PUTU PARINI", "account": "3420779886"}, {"name": "I PUTU JULI SUGIASA", "account": "0490683038"}, {"name": "KETUT ADI ARYA SAPUTRA", "account": "1350963088"}, {"name": "ARDI WIRANATA", "account": "7726013054"}, {"name": "MEMES FIRA DWIYANA", "account": "8288141031"}, {"name": "Triyanah", "account": "0690676231"}, {"name": "AL-KAUT SHAR ADHWI PUTRA", "account": "0031452936"}, {"name": "Entin", "account": "8660508555"}, {"name": "Syahra Aryani", "account": "1940551192"}, {"name": "I KD FIGO SUGIANANTA", "account": "3420794028"}, {"name": "ANAK AGUNG BAGUS BRAHMANTIA", "account": "7726015863"}, {"name": "RADITYA KRISNA PUTRA", "account": "6485694491"}, {"name": "I GEDE PENDI ARIANTIKA", "account": "6485683686"}, {"name": "NOVA WULANDARI", "account": "6116006912"}, {"name": "YANAH", "account": "5830414721"}, {"name": "M DITA ARIAWAN", "account": "0490688340"}, {"name": "SOFYAN", "account": "1350969795"}, {"name": "NURAENI", "account": "2770842321"}, {"name": "Fitriyani", "account": "8288152997"}, {"name": "TASYAI SALSABILA", "account": "3910376305"}, {"name": "YUSMARNI", "account": "3720479531"}, {"name": "HENI WATI", "account": "0830281746"}, {"name": "ANYZHA FITRI ZAHARAH", "account": "7550506968"}, {"name": "Reva Azahra", "account": "5860595585"}, {"name": "DENI DENURI", "account": "4010545272"}, {"name": "Sutini", "account": "1985854126"}, {"name": "Setiawan Julyanto", "account": "1994215247"}, {"name": "Normayanti", "account": "1990851728"}, {"name": "Hanimah", "account": "2021378938"}, {"name": "Agus Suwanda", "account": "2085687261"}, {"name": "Mentari", "account": "218701009979507"}, {"name": "Ade Hikmat Nurjaman", "account": "385401006313500"}, {"name": "Titik Mulyati", "account": "324201010700504"}, {"name": "Abdul Kadir", "account": "041501043395504"}, {"name": "Muhamad Fahmi", "account": "331201004070504"}, {"name": "Efi Reflini", "account": "031901033537504"}, {"name": "ANDRI", "account": "112901038998505"}, {"name": "NANDA SETIAWAN", "account": "1180015254872"}, {"name": "Riannita Lestari Nur Fitrianingsih", "account": "1380027962013"}, {"name": "Irvana Septianas", "account": "1680004092639"}, {"name": "Evi Prasetiyo", "account": "003704318280"}, {"name": "Elis Mahripah", "account": "903707159814"}, {"name": "Resma Nurfadriah", "account": "903711473029"}, {"name": "NURUL ARIFIN", "account": "9952410560"}, {"name": "KANIA AZZAHRA", "account": "9952543439"}, {"name": "Kautsar Insani", "account": "9948978498"}], "REKENING AKTIF WITHDRAW (BANK KOTOR)": [{"name": "AJAT SUDRAJAT", "account": "5435141291"}, {"name": "Bayu Nurjaman", "account": "7840375433"}, {"name": "Romli Azis Wijayanto", "account": "106801003011532"}, {"name": "Ahmad Safarudin", "account": "052101005578533"}, {"name": "Triyanto Salim", "account": "411401016258503"}, {"name": "Juanda", "account": "091601011915502"}, {"name": "Dudung", "account": "3668928983"}, {"name": "NGADIMAN", "account": "003671465874"}, {"name": "Hendrawan Ahmad", "account": "003659874238"}, {"name": "Atam", "account": "003677117511"}, {"name": "Anas Jaelani", "account": "003668077336"}], "DATA REKENING AKTIF BANK KAS (BERSIH)": [{"name": "Rismayanti", "account": "4810373941"}, {"name": "Hasifah", "account": "2770840140"}, {"name": "Siti Fadilah", "account": "8650822693"}, {"name": "SRI HARDIYANTI", "account": "0830280120"}, {"name": "Dodi Firdaus", "account": "1980422867"}, {"name": "Anggita Putri Veratami", "account": "0155158455"}, {"name": "Yenni", "account": "1170012890364"}, {"name": "RUDY CHANDRA", "account": "903693329934"}, {"name": "Ani", "account": "903693226262"}], "DATA REKENING AKTIF BANK KAS (KOTOR)": [{"name": "YENNY WIJAYA", "account": "2850128491"}, {"name": "Agus Sumarno", "account": "8681240551"}], "REKENING BERMASALAH WITHDRAW (BERSIH)": [{"name": "Siti Fatimah", "account": "5300322451"}, {"name": "ARDIANSYAH", "account": "6015116181"}, {"name": "MUHAMAD IRKHAMUL BAQI", "account": "7275569224"}, {"name": "FAZRUL RAUSAN SABRINOV", "account": "6282527410"}, {"name": "Haryani", "account": "3090200126"}, {"name": "EVAN ALFIANTO", "account": "0750266347"}, {"name": "NUR SUGIHARTA TAHTA SYAMSU", "account": "2320743845"}, {"name": "Ridho Dava Berlan Kayo", "account": "332201004825504"}, {"name": "bima digdo marruto", "account": "003704851777"}, {"name": "Nurhayatfi Ardillah", "account": "3705046807"}, {"name": "Muhammad Rizki", "account": "708650543100"}, {"name": "Sri Wahyuni", "account": "708647849400"}, {"name": "SUTEJO", "account": "708560468100"}, {"name": "NUR ILHAM", "account": "708562474400"}, {"name": "Sulim Maria", "account": "1680004359558"}, {"name": "ELAH NURLELA", "account": "1330033994294"}, {"name": "Nabilah Safira", "account": "1170012876801"}, {"name": "Jayana", "account": "8025911221"}], "REKENING BERMASALAH WITHDRAW (BANK KOTOR)": [{"name": "Susilawati", "account": "5411408001"}], "DATA REKENING KAS BERMASALAH (BERSIH)": [{"name": "SITI HOLIPAH", "account": "1740959227"}, {"name": "GERALDI ATMIRAL", "account": "003700961885"}, {"name": "CHAIRON", "account": "3703454888"}, {"name": "Fie Kian", "account": "1200013636290"}, {"name": "TIAH SETYANINGSIH", "account": "370810074671"}], "DATA REKENING KAS BERMASALAH (KOTOR)": [{"name": "Beti Panheti", "account": "1751204031"}, {"name": "Khairul Rajmi", "account": "1751053911"}], "REKENING DEPOSIT BERMASALAH": [{"name": "TIA WULANTARI", "account": "6275257404"}, {"name": "WAHYU NINGSIH", "account": "8651016312"}, {"name": "SURYATMAN", "account": "044001024639506"}, {"name": "KIRE PAPE", "account": "212201003028538"}, {"name": "AL VADLI RAHMAN", "account": "385401005424502"}, {"name": "Muhammad Ferdinand", "account": "2023587860"}, {"name": "Wakid Nur Rochim", "account": "2019587572"}], "REKAPAN TOKEN & SIMCARD DIKEMBALIKAN KE ADM (BANK DEPO)": [{"name": "AFRIZAL GUNAWAN SARABITTI", "account": "7241177267"}, {"name": "AFRIZAL GUNAWAN SARABITTI", "account": "8787923986"}, {"name": "DINI NOVIA LESTARI", "account": "1310020049724"}, {"name": "DEVIN", "account": "6980279489"}, {"name": "MHD GILANG PRAMANA", "account": "8235259695"}, {"name": "MUHAMMAD ZERO MOYA", "account": "1680003260542"}, {"name": "TITIK GEOWIDURI", "account": "1640005893302"}, {"name": "DENI NOVITA SARI", "account": "1680003260542"}, {"name": "Anang Syafei", "account": "1180013695100"}, {"name": "Sri Wartini", "account": "1680003167721"}, {"name": "WIKA NUR AYDA", "account": "1640002240853"}, {"name": "Ardi Marsandi", "account": "1090022303457"}, {"name": "Galang Dwi andika", "account": "1760004722763"}, {"name": "Liberti Br Aruan", "account": "1090022400402"}, {"name": "Febry Ramadhan", "account": "1640005889326"}, {"name": "Agung Setiyawan", "account": "1680003366216"}, {"name": "NURHASANAH", "account": "1250015352107"}, {"name": "REHAN NURJAMAN", "account": "1310020952406"}, {"name": "Dedek Sofi Agustini", "account": "1060018751506"}, {"name": "HANANG SETIAWAN", "account": "1010013341027"}, {"name": "ADRIAN WIBOWO PURNOMO", "account": "1550013560704"}, {"name": "KHARISMA PUTRI DEWI", "account": "1390029409525"}, {"name": "SETYAWATI", "account": "1010013424922"}, {"name": "Putri Wulandari", "account": "1200013856088"}, {"name": "Atik Jamiatul Maysaroh", "account": "1180013676910"}, {"name": "MUHAMMAD RIZKY", "account": "1650003559201"}, {"name": "RAJA MAULANA", "account": "1050020152702"}, {"name": "Daniarti", "account": "1640005889748"}, {"name": "MUHAMMAD RIDWAN", "account": "1010013421514"}, {"name": "Eko Prasetyo", "account": "1640005889136"}, {"name": "TONY", "account": "1820010211241"}, {"name": "LUCKY DAHLIA", "account": "2521369398"}, {"name": "NI PUTU KAJUL NOVASTA IN", "account": "0092221839"}, {"name": "RIVALDI ARIE PRATAMA", "account": "7015757965"}, {"name": "LIANA WATI", "account": "150401006033505"}, {"name": "CAHYONO GUNDADI", "account": "720701003603505"}, {"name": "UUS USNIAH", "account": "7131611092"}, {"name": "SURYANA", "account": "1300024536313"}, {"name": "RANI DAMARASARI", "account": "1630009884076"}, {"name": "Encun Sunayah", "account": "1630009887368"}, {"name": "DEL PIERO PUTRA SEMBIRING", "account": "1190011015680"}, {"name": "YULIANA YUSTINA", "account": "1820724549"}, {"name": "RIZAL KURNIAWAN", "account": "1320026955576"}, {"name": "IRFAN KURNIAWAN", "account": "40101003004568"}, {"name": "NANANG ARIYANTO", "account": "706584807900"}, {"name": "SITI RAHMA WANTI", "account": "1498632683"}, {"name": "MURTI", "account": "1498665744"}, {"name": "RIDUANUDDIN", "account": "8205604738"}, {"name": "SUSANNI", "account": "1550013284495"}, {"name": "METTA NIA ANJANI", "account": "1680003369905"}, {"name": "Manda Alisia Putri", "account": "1180013678635"}, {"name": "LUKMAN NURHAKIM", "account": "1180013479794"}, {"name": "PUSPITA SARI", "account": "1680334354"}, {"name": "HARIANI", "account": "1610151619"}, {"name": "AHMAD SAHUDI", "account": "7174143627"}, {"name": "Putu sukreni", "account": "7680737694"}, {"name": "MAIZURA RAWY", "account": "1751187829"}, {"name": "FEBRIANSYAH PUTRA SETIAWAN", "account": "3672692716"}, {"name": "IMA MUSYAROFAH", "account": "6485534249"}, {"name": "GUGUM RAHMADI", "account": "1300023257713"}, {"name": "ANTHONY STEVEN", "account": "032501019923534"}, {"name": "RANGGA SETIAWAN", "account": "330901002546504"}, {"name": "DANANG SULISTYO", "account": "2521370299"}, {"name": "PIRMAN NURRIZKI", "account": "1300023236105"}, {"name": "PURI DWI PUTRI", "account": "2790296977"}, {"name": "SRI WIJAYANTI", "account": "3530716553"}, {"name": "TEGAR DAFFA MULANTOMO", "account": "7961014810"}, {"name": "DANI", "account": "368301000012561"}, {"name": "MUHAMMAD NUR ROFIK", "account": "7177451287"}, {"name": "PRIMA NURRIZKI", "account": "218401000611566"}, {"name": "IRWANTO", "account": "0985609704"}, {"name": "SYAHRUL", "account": "7495093352"}, {"name": "ALDI SETIAWAN", "account": "7179534708"}, {"name": "AKBAR", "account": "707674626200"}, {"name": "RUDI EKO SAPUTRO", "account": "707658801600"}, {"name": "DAPIT", "account": "707640765200"}, {"name": "RISKAL MAULANA", "account": "707650006600"}, {"name": "ASEP HENDRAWAN", "account": "2790290243"}, {"name": "SAIDIMAN", "account": "7177155963"}, {"name": "JIMMY HERMAWAN", "account": "1260010844750"}, {"name": "ARI RIDWAN", "account": "1170010487320"}, {"name": "YUDI KUSUMA", "account": "1020010931944"}, {"name": "DONI KURNIAWAN", "account": "707646708600"}, {"name": "NANI INDRIA SARI", "account": "763450969300"}, {"name": "SALIKHIN", "account": "707637322800"}, {"name": "RIVA LAELATUL RUFAIDA", "account": "707497934700"}, {"name": "Rayka sartika", "account": "707727488000"}, {"name": "DENI NOVITA SARI", "account": "1050020032490"}, {"name": "ROSDIANAH", "account": "5390790793"}, {"name": "MESY", "account": "2790297027"}, {"name": "SHERLY HENDRIANI", "account": "525901007111509"}, {"name": "AGUS SUPRIYANTO", "account": "145301000941509"}, {"name": "TONY", "account": "1820010211241"}, {"name": "JUWARIYAH", "account": "1601026796535"}, {"name": "KARINA YULIANI", "account": "8301126724500"}, {"name": "ANINDYA AYU ARSHYA SUHARYADI", "account": "32501019898535"}, {"name": "SRI MULYANI", "account": "501003764560"}, {"name": "IQBAL APRIDEO", "account": "707282143000"}, {"name": "EKA NUR HAYATI", "account": "762692817900"}, {"name": "AIDIL FIKRI MATONDANG", "account": "1751187772"}, {"name": "YENI SOLEHA", "account": "5830388844"}, {"name": "Watmi Andayanti", "account": "0690634198"}, {"name": "Mochamad Rofic", "account": "7580948663"}, {"name": "TETI CAHYANTI", "account": "8235259776"}, {"name": "SARMAH BT SARNAN", "account": "2530382578"}, {"name": "Ganda", "account": "5785385257"}, {"name": "RIYANTI BT CARSA", "account": "1814289057"}, {"name": "ACHMAD MALIK DANUARTA", "account": "1850806173"}, {"name": "SITI SAMI", "account": "7263318937"}, {"name": "DENDAYATNI PERTIWI", "account": "5530747877"}, {"name": "SUPRIADI", "account": "0562167381"}, {"name": "YANI TRI WULANDARI", "account": "0092223599"}, {"name": "SITI SARIPAH", "account": "7540363620"}, {"name": "DENI FIRMANSYAH", "account": "1660003352986"}, {"name": "ACIH CAHYANI", "account": "707365333000"}, {"name": "BAGUS DWITAMA PUTRA", "account": "8271260750"}, {"name": "KIKI WULANDARI", "account": "060901007339531"}, {"name": "WILDAN ARSATYA", "account": "060901030036500"}, {"name": "ANDRI CAHYADI", "account": "094501007683508"}, {"name": "AHMAD HIDAYAT", "account": "096901006677506"}, {"name": "I gede Pasek Adi Agus Mahendra", "account": "1450016287563"}, {"name": "ABDUL WAHYU AJI", "account": "707353510100"}, {"name": "ARYA DWI PUTRA", "account": "706584379300"}, {"name": "BUDY RAHARJO", "account": "8708001242"}, {"name": "KOY NARTA", "account": "003637687439"}, {"name": "HAFID PUTRA SISWANTO", "account": "0690572371"}, {"name": "NUNUK RIYANTI", "account": "7275292516"}, {"name": "MUHAMMAD NADZRIL", "account": "4850548451"}, {"name": "Akhmadi", "account": "8780498634"}, {"name": "Mochamad Rofic", "account": "7580948663"}, {"name": "RANGGA", "account": "5445372274"}, {"name": "DEDE ADAM", "account": "1824349050"}, {"name": "Wayan Yuda Eka Saputra", "account": "463601020136535"}, {"name": "AJI RIANSYAH", "account": "079501004237501"}, {"name": "MUSLIKAH", "account": "8739008050"}, {"name": "MUSLIKAH", "account": "7263413948"}, {"name": "AGUNG SETIYAWAN", "account": "5785372180"}, {"name": "DILA ADISTY", "account": "1610145759"}, {"name": "FRIDO DWI AGUSTINO", "account": "4850489594"}, {"name": "MUZAKKI FARHAN", "account": "5475773796"}, {"name": "DAMAR WULAN", "account": "8801545092"}, {"name": "MUHAMMAD DAVID", "account": "6050737258"}, {"name": "M Hilmi Zahran", "account": "707900802100"}, {"name": "Rizal suhendi", "account": "707970303500"}, {"name": "SUPARMAN", "account": "708003013100"}, {"name": "ARI YUSTIAN HAKIM", "account": "052401022801503"}, {"name": "HERRY SETIAWAN", "account": "121201009230505"}, {"name": "Evi Oktaviani", "account": "1928505014"}, {"name": "Muhammad Naufal", "account": "4010520512"}, {"name": "FIRLY ANDARA UTAMI", "account": "1760004727721"}, {"name": "ALYYA FAUZIYAH", "account": "054401001508568"}, {"name": "FIRMANSYAH", "account": "707566817400"}, {"name": "RICKY KURNIA SETIAWAN", "account": "8770914972"}, {"name": "Warsi", "account": "2770776921"}, {"name": "MIYA WAHYUNI", "account": "1853930108"}, {"name": "Ahmad Ramadhan", "account": "1854979449"}, {"name": "Muhamad Fadly", "account": "1857003102"}, {"name": "REHAN HIDAYAT TULLOH", "account": "6631533555"}, {"name": "Rifky Adi Susanto", "account": "1856693414"}, {"name": "YANTI", "account": "1856693561"}, {"name": "MARYANI", "account": "1863767413"}, {"name": "Maita Ayu Dwi Anggita", "account": "7286431296"}, {"name": "Rani Andini Putri", "account": "8789954537"}, {"name": "KIKI MARLINA", "account": "725401029609532"}, {"name": "ASTRID RAHMAWATI", "account": "112701011031536"}, {"name": "RIAN RIRIS", "account": "79701008889502"}, {"name": "RAMADHAN", "account": "0670932206"}, {"name": "DENDY RAMADANI", "account": "5311273460"}, {"name": "REYHAN PUTRA AMIJAYA", "account": "1940529511"}, {"name": "BIBIT SANTOSO", "account": "1985343393"}, {"name": "Nursiti", "account": "6277014191"}, {"name": "Darsiman", "account": "5500601908"}, {"name": "Asep Hasbullah", "account": "8681440488"}, {"name": "Fillya Agdyanty", "account": "4850566068"}, {"name": "Bagas Sulistio", "account": "7391956786"}, {"name": "Halim", "account": "1957343624"}, {"name": "Ulfa Umami", "account": "082001021137501"}, {"name": "FAHMI ALDIANSYAH", "account": "003672683467"}, {"name": "Agus Maulana", "account": "7753157818"}, {"name": "dedy handika", "account": "764127443800"}, {"name": "MULIANTO", "account": "708683976200"}], "REKAPAN TOKEN & SIMCARD DIKEMBALIKAN KE ADM (WITHDRAW)": [{"name": "YUNI RAHMA", "account": "1799938290"}, {"name": "SRI WAHYUNI", "account": "690568471"}, {"name": "Aldo Bangun", "account": "7455406561"}, {"name": "SIGIT CAHYO", "account": "7600189799"}, {"name": "CAHYONO GUNDADI", "account": "5940730637"}, {"name": "ABDUL HARIS", "account": "6801539995"}, {"name": "ALDI WIRANTO", "account": "420772751"}, {"name": "KOMANG JULIARTINI", "account": "7703061887"}, {"name": "SUPARTI", "account": "763453929200"}, {"name": "DANA PRIANA", "account": "1815243770"}, {"name": "FERRY DONI HARTANTO", "account": "8732940297"}, {"name": "IRWANTO", "account": "324901005632502"}, {"name": "ILHAM CATUR", "account": "4260607095"}, {"name": "Peprita", "account": "107621320736"}, {"name": "Romlah", "account": "102792555562"}, {"name": "Ricky Dwi Praditya", "account": "104289007572"}, {"name": "Sri Rohesih", "account": "102584750930"}, {"name": "Dimas Budi Riyanto", "account": "102083338630"}, {"name": "Joni Devian Diantoro", "account": "104962526932"}, {"name": "ISKANDAR SYAHRONI", "account": "463601020596531"}, {"name": "Felix Fernando", "account": "3656034364"}, {"name": "DINI NOVIA LESTARI", "account": "40701001570567"}, {"name": "Monang Malau", "account": "8783924420"}, {"name": "Aldo Bangun", "account": "7455406561"}, {"name": "Darmawan", "account": "7571074617"}, {"name": "Darmawan", "account": "5212232122"}, {"name": "IRVAN MAULANA", "account": "7510992754"}, {"name": "IWAN WIJAYA", "account": "111501002557536"}, {"name": "ILHAM ARDI KAREPESINA", "account": "7295746645"}, {"name": "SUMIYATI", "account": "7295744260"}, {"name": "HENDRA", "account": "6540400316"}, {"name": "SUTRISNO", "account": "1147514229"}, {"name": "DEDE KURNIAWAN", "account": "2790291266"}, {"name": "Nurhidayat", "account": "763436520300"}, {"name": "PRIHATIN NINGSIH", "account": "707800577100"}, {"name": "HASAN", "account": "1150007433552"}, {"name": "FAUZIANA", "account": "707702682500"}, {"name": "Hermawan", "account": "280370576"}, {"name": "FIRMAN GUNARDI", "account": "333001005922508"}, {"name": "Heryanto Kusnadi", "account": "1190007672148"}, {"name": "ABDUL ROIS", "account": "106801008029506"}, {"name": "KARYO PRATAMA", "account": "7180878755"}, {"name": "YONASTIAN LUMIKA", "account": "1350017963065"}, {"name": "ATIKA WULANDARI", "account": "653101005462509"}, {"name": "SITI SOPIAH", "account": "40101002993560"}, {"name": "Muhammad Iqbal", "account": "707700192900"}, {"name": "RAMDAN NURFAZRI", "account": "707304551100"}, {"name": "REZA JUNIARTA", "account": "763167973600"}, {"name": "IWAN ISWANDI", "account": "707380146400"}, {"name": "JIHAN GUSTIANI", "account": "763086178500"}, {"name": "KAPILAH RIZKI", "account": "707495736100"}, {"name": "ONAH MEGAWATI", "account": "707333637000"}, {"name": "HARYANI", "account": "707285893300"}, {"name": "IHSAN NULFIQIH", "account": "707316643400"}, {"name": "ARI SETIAWAN", "account": "707351097400"}, {"name": "MUJIIB", "account": "763168033600"}, {"name": "DESY ARIATI", "account": "8271148607"}, {"name": "SANDI SANTOS", "account": "148001004083504"}, {"name": "MULYANA SETIADI", "account": "60011072448"}, {"name": "HENDRA", "account": "6370366754"}, {"name": "AGUNG ZUNADI", "account": "3652249420"}, {"name": "FIRMANSYAH", "account": "3650503059"}, {"name": "MAYA SITI MAESAROH", "account": "707674368500"}, {"name": "Yuda Prastiyo", "account": "707799682500"}, {"name": "Nikson Taebanu", "account": "8550772681"}, {"name": "Andre Prasetyo Wicaksono", "account": "6760347459"}, {"name": "SITI ROFIQOH", "account": "2360687506"}, {"name": "BAGAS SAPUTRA", "account": "1393771295"}, {"name": "Dehanawati", "account": "1310022113353"}, {"name": "SYAFIAH TASSYA RAMADANIA", "account": "1820899697"}, {"name": "HASAN BASUNI", "account": "762801001745507"}, {"name": "KAS RICO HENDRAWAN", "account": "3652050653"}, {"name": "KAS PATIMATUL AINIAH", "account": "8660406451"}, {"name": "Anggit Priatmadi", "account": "763689772800"}, {"name": "Herry B", "account": "707757838600"}, {"name": "Steven Valentino", "account": "707759958900"}, {"name": "SITI AMINAH", "account": "707648761800"}, {"name": "ARNIKA ASUSILAH BACHTIAR", "account": "707634417100"}, {"name": "Periadi", "account": "707758131600"}, {"name": "prasetyo try wibowo", "account": "707726465100"}, {"name": "Ayu Kartika", "account": "706342369000"}, {"name": "CACA DERMAWAN", "account": "2330616451"}, {"name": "LUTVI ABDURAHMAN", "account": "6760634679"}, {"name": "Mochmad Dakir", "account": "464001003859509"}, {"name": "SITI ITA LESTARI", "account": "1180013676878"}, {"name": "Jonathan", "account": "707763404400"}, {"name": "Novia Sari", "account": "707699292800"}, {"name": "HENDRA", "account": "6540400316"}, {"name": "ANTONIUS DANAR BUDIARTO", "account": "8708001282"}, {"name": "LUSIYANTI", "account": "7445451177"}, {"name": "Umar Said", "account": "707648292000"}, {"name": "BOBBY SURYA WIJAYA", "account": "706694632500"}, {"name": "ROSDIANAH", "account": "707758053300"}, {"name": "GIRI NUGRAHA", "account": "707757759100"}, {"name": "Fadillah Muharam", "account": "707748752900"}, {"name": "Arif Rahman", "account": "1680001739661"}, {"name": "IWAN HERMAWAN", "account": "408001005523506"}, {"name": "FITRI ANGGRAINI", "account": "3120884921"}, {"name": "PRIHATIN NINGSIH", "account": "707800577100"}, {"name": "YEREMIA EMANUEL L TOBING", "account": "1310020070209"}, {"name": "SUGIONO WINARTO", "account": "3371987868"}, {"name": "SITI JENAB", "account": "707280402300"}, {"name": "DHEA NOVISA", "account": "1300023243770"}, {"name": "KADEK KONTARINI", "account": "1450016299097"}, {"name": "M Kayat", "account": "1450016306306"}, {"name": "Hamdi", "account": "1450016310415"}, {"name": "Imam Qozali", "account": "1450016306314"}, {"name": "SANTI KRISTIANI", "account": "1450016476612"}, {"name": "LIKE PURWANTI", "account": "707305459300"}, {"name": "RENDI GUNAWAN", "account": "707329242400"}, {"name": "CAHYONO GUNDADI", "account": "5940730637"}, {"name": "AGUS MARTONO", "account": "3652404777"}, {"name": "AGUS SUSANTO", "account": "170297547"}, {"name": "DENI FIRMANSYAH", "account": "1660003352986"}, {"name": "SANDI SONIAWAN", "account": "4750605139"}, {"name": "SARAH RIZAL", "account": "322595598"}, {"name": "RIZKI ROSULAN ILLAHI", "account": "5860523967"}, {"name": "IMDANI", "account": "707548256400"}, {"name": "ANDI ACHMAD RAMADHAN", "account": "763887860800"}, {"name": "WAHYUNAH", "account": "707634809800"}, {"name": "REYHAN FEBRIAN SAVERO", "account": "1550013703676"}, {"name": "MOHAMMAD IRYO NANDIT", "account": "1760004903611"}, {"name": "MUHAMAD RIZKY", "account": "1670007289761"}, {"name": "IBRAHIM REHALAT", "account": "1270012262281"}, {"name": "ELISA VIORINA HERWANTI", "account": "2460949524"}, {"name": "RISVIA HANIKA ANANDA", "account": "708139355100"}, {"name": "Samuel Valentino", "account": "707762886300"}, {"name": "Dwi Agustina", "account": "8022917077"}, {"name": "SUPANDI", "account": "1150010580233"}, {"name": "MUHAMMAD SHEVA RAGA ANWAR", "account": "1010013556103"}, {"name": "Billy Syahputra", "account": "707728461900"}, {"name": "MOHAMMAD YUDI SANTOSO", "account": "7445394424"}, {"name": "ANDRI WIJAYANTO", "account": "7176865727"}, {"name": "SONI GUNAWAN", "account": "7840363923"}, {"name": "LUSIYANTI", "account": "7445451177"}, {"name": "Fiki Andi Nurzunefi", "account": "1450015933944"}, {"name": "Rafli Khatami", "account": "762961449600"}, {"name": "DIMAS BAGAS RIYANTO", "account": "707742795700"}, {"name": "ALI ZAINAL ABIDIN", "account": "8793919178"}, {"name": "ABDUL RIJAL FAHMI", "account": "7263298688"}, {"name": "EENG GUNAWAN", "account": "1393759805"}, {"name": "JAMAL HARI", "account": "1351253160"}, {"name": "ADE INDRA MAULANA", "account": "2790297264"}, {"name": "RIYAN SAPUTRA", "account": "1856736696"}, {"name": "YAHYA", "account": "3672178120"}, {"name": "Al Hafizh", "account": "3683318020"}, {"name": "TAUFIK", "account": "37901043629501"}, {"name": "MAMAY SURYADI", "account": "99601013340503"}, {"name": "IWAN SULAIMAN", "account": "169701006642505"}, {"name": "IWAN SANTOSO", "account": "114601016499503"}, {"name": "NUR ROCHMAN", "account": "98401039521534"}, {"name": "DANIEL SETIADI", "account": "50501015216503"}, {"name": "MUHAMMAD NASRUN", "account": "322901006582500"}, {"name": "LISTIONO", "account": "719101025379535"}, {"name": "FAJRI ARJIO", "account": "106801003025531"}, {"name": "BINTANG PRATIWI", "account": "719101005907502"}, {"name": "METALYA WATY PURBA", "account": "3683338101"}, {"name": "HIBARTI MULYANA", "account": "3671665093"}, {"name": "ANAH NOPIYANTI", "account": "3675100063"}, {"name": "KADEK KONTARINI", "account": "1854931156"}, {"name": "I GEDE PASEK ADI AGUS MAHENDRA", "account": "1854301339"}, {"name": "MUHAMAD FAISAL FADILAH", "account": "1506888379"}, {"name": "RIAN", "account": "5445417235"}, {"name": "RONY", "account": "1688584315"}, {"name": "M KAYAT", "account": "1855428572"}, {"name": "MUHAMMAD DAFFA ADI PAMUNGKAS", "account": "1825380522"}, {"name": "MUHAMMAD ALLFANDI", "account": "1825040187"}, {"name": "IRFAN SETIAWAN", "account": "1010013553241"}, {"name": "MIKKI DWI ARYANTO", "account": "1815597560"}, {"name": "LUH MERTAYU", "account": "1846225914"}, {"name": "DEWANGGA PRASETYA", "account": "1856516911"}, {"name": "MUHAMMAD RIZKI MAULANA", "account": "1825800978"}, {"name": "ERVANTO", "account": "7670796617"}, {"name": "MUHAMMAD PUTRA GILANG PRASTYO", "account": "1855624532"}, {"name": "MUHAMMAD ALFIO", "account": "1856542249"}, {"name": "KARSINI", "account": "1640006272803"}, {"name": "TINAH", "account": "1550013500981"}, {"name": "Ita Nur Asriah", "account": "5785385249"}, {"name": "RIZALDY PUTRA ANANDA", "account": "1825029786"}, {"name": "ADI SLAMET", "account": "1393787230"}, {"name": "DANA PRIANA", "account": "1815243770"}, {"name": "IMAM QOZALI", "account": "1855427330"}, {"name": "MILASARI", "account": "707365190000"}, {"name": "Ketut Muliawan", "account": "7680742442"}, {"name": "M. DENY KURNIAWAN", "account": "1913468034"}, {"name": "SHINTYA", "account": "6050746079"}, {"name": "ERGI SAPUTRA", "account": "6090600280"}, {"name": "RANDY RAVIOLA", "account": "8801498124"}, {"name": "FONNA ZAHRA", "account": "2040762411"}, {"name": "AHMAD DZUL HANNAN", "account": "6631534993"}, {"name": "IRNA JULIANTI", "account": "5295277154"}, {"name": "AMELIA ROSNITA", "account": "707991900600"}, {"name": "FIKRI HARDIANSYAH", "account": "708069575400"}, {"name": "SITI INDRIYANA", "account": "41801023469503"}, {"name": "MEDIK", "account": "142101005072502"}, {"name": "MUAMMAR IKSAN", "account": "1910507452"}, {"name": "MUSLIKAH", "account": "7263413948"}, {"name": "FAZRUL RAUSAN SABRINOV", "account": "6282527410"}, {"name": "SUSENDI", "account": "4972248995"}, {"name": "MUHAMMAD SYURA ARDANA", "account": "7645225384"}, {"name": "Naura Hesya Gumay", "account": "6050746095"}, {"name": "YUSMADI", "account": "7630532391"}, {"name": "BAMBANG SOBAR", "account": "7105309678"}, {"name": "ARI HARTANTO", "account": "1825027654"}, {"name": "DONI JUARTO", "account": "1365879328"}, {"name": "RAHMAT FAJAR RIYADI", "account": "6801879966"}, {"name": "SURYA SYAHPUTRA", "account": "700438538"}, {"name": "DARREN RAMA ARISTO", "account": "5475773826"}, {"name": "DONNY WIJAYA", "account": "707989830700"}, {"name": "Rio Felany", "account": "1610151414"}, {"name": "Andi Fitriandi", "account": "3608588988"}, {"name": "ISMANTO", "account": "3672961806"}, {"name": "Gelis Yudistirani", "account": "1884924734"}, {"name": "Muhammad Fariz Syahbani Adam", "account": "1885156044"}, {"name": "Whili Dwi Prasetyo", "account": "1887161799"}, {"name": "PANCA INDRA FAHRUDDIEN", "account": "330301004135509"}, {"name": "MUHAMMAD WILDAN", "account": "213501012846504"}, {"name": "RESTU DWI AJI", "account": "93601090460538"}, {"name": "MUHAMMAD PASHA AQUINTA PRATAMA RIZAL", "account": "813101007783505"}, {"name": "MUHAMAD EDSON", "account": "39301041631504"}, {"name": "Winarti", "account": "700011804437"}, {"name": "KADEK RISKI ADWIKA PUTRA", "account": "1450016594711"}, {"name": "TSANIYAH LESTIAWATI", "account": "1150010519728"}, {"name": "Ade Irma Wahyuni", "account": "707795553300"}, {"name": "ASHRAF AZHARI", "account": "763867491500"}, {"name": "JEMY ARIFIN", "account": "707776444400"}, {"name": "Gelis Yudistirani", "account": "708139776100"}, {"name": "MOHAMMAD RIYANSYAH", "account": "708155696400"}, {"name": "DWI ANGGRAENI PUTRI", "account": "112701011514534"}, {"name": "EMA ERIYANA", "account": "1361196573"}, {"name": "ABDUL ROHMAN", "account": "5277022988"}, {"name": "Muhammad Riski Pratama", "account": "1190011448113"}, {"name": "Muhammad FARELLINO LANTOA", "account": "8162917130"}, {"name": "Andi Fitriandi", "account": "3608588988"}, {"name": "ARNI BORNIS", "account": "7015871270"}, {"name": "DARUL HADIST", "account": "99401025414502"}, {"name": "Darmawan", "account": "7299642838"}, {"name": "DEBI RIANI", "account": "4850548361"}, {"name": "Muhamad Ramdani", "account": "763800230200"}, {"name": "Muhamad Ridwan", "account": "707705589100"}, {"name": "GAOS ARIPIN SAPUTRA", "account": "1150010520312"}, {"name": "Yazid Arkan Alfattah", "account": "763887765100"}, {"name": "INTAN NURAINI", "account": "763663437700"}, {"name": "MOCHAMMAD ABDU RAFIE ALRASY", "account": "707999413600"}, {"name": "DEJAN RESTU HANDOYO", "account": "707997353300"}, {"name": "ERWIN GUNAWAN", "account": "1790367002"}, {"name": "Siti Halimah", "account": "1190011424007"}, {"name": "MUHAMMAD REYNALDY KURNIAWAN", "account": "708137151300"}, {"name": "DWI APRILIYANI", "account": "1810731806"}, {"name": "TOPAN ABDUL MALIK", "account": "1816953245"}, {"name": "DAVIN MALVINO", "account": "6044487017"}, {"name": "YULYANAH WIJAYA", "account": "3671430704"}, {"name": "RONI INDRA", "account": "1393759791"}, {"name": "Aripin Sobari", "account": "1310022438453"}, {"name": "SONY SUMANSYAH", "account": "707724060700"}, {"name": "Rano", "account": "1889580311"}, {"name": "ANTONIO RIFALDO", "account": "763124548000"}, {"name": "Lay Wan Tjong", "account": "707986189200"}, {"name": "MUHAMMAD ABIT MAULANA AFRIAN", "account": "5785361129"}, {"name": "Suryana", "account": "6910674216"}, {"name": "RIANI RAHMATILLAH", "account": "6331587912"}, {"name": "DAHLIYAH", "account": "1684614051"}, {"name": "BAYIN NURLAILI", "account": "1825030859"}, {"name": "SASRIYAH", "account": "1684615985"}, {"name": "Anggi Permata Sari", "account": "3120963391"}, {"name": "Rezzky Sukra Adinda Febrian", "account": "8565330795"}, {"name": "RINI NUR AMALIYAH", "account": "6850405491"}, {"name": "NINA MEYLIYANI", "account": "2740654473"}, {"name": "DEKI PRIMA YASA", "account": "403594056"}, {"name": "JUNTA OKTAVIAN", "account": "707595859800"}, {"name": "NATASHA", "account": "4871018558"}, {"name": "NURYANI", "account": "1680003844360"}, {"name": "Uswatun Hasanah", "account": "1200014959444"}, {"name": "Restu Bumi", "account": "1550014843794"}, {"name": "Pudin", "account": "1630014267093"}, {"name": "Merie", "account": "1690004650575"}, {"name": "YURNALIS", "account": "1110024194033"}, {"name": "M HIDAYAT", "account": "1913230179"}, {"name": "Irwan Susanto", "account": "39501025746507"}, {"name": "AYU SARTIKA DEWI", "account": "708539026300"}, {"name": "Mohamad Eka Adittya", "account": "118301016247508"}, {"name": "Muntasripah", "account": "1180014686785"}, {"name": "Rhafid Ramadhan", "account": "1760006635252"}, {"name": "PUTRI KARTIKA AGUSTIN", "account": "8650726635"}, {"name": "Danuar Yitsurani", "account": "1550015281325"}, {"name": "Harlan Fadillah", "account": "124401008455507"}, {"name": "Kholili", "account": "1210013972629"}, {"name": "Syafitri Ameliana", "account": "1550014843703"}, {"name": "Mulyani", "account": "1680003993977"}, {"name": "Muhammad Abdul Khoir", "account": "1150010869503"}, {"name": "M. Abdul Latip", "account": "1550015122222"}, {"name": "SINGGIH GUNAWAN", "account": "1913816447"}, {"name": "Haryono", "account": "1170012711453"}, {"name": "Andika Putra Prasetio", "account": "31437881"}, {"name": "Eis Purnamasari", "account": "1150011164870"}, {"name": "DILA ADISTY", "account": "3672295411"}, {"name": "M REYHAN", "account": "1972148853"}, {"name": "MUHAMMAD GIBRAN HIDAYAT", "account": "1916613692"}, {"name": "Doni Muliantono", "account": "1927967036"}, {"name": "Fathur Rohman Aly", "account": "1550014293081"}, {"name": "Wanto", "account": "1924298330"}, {"name": "Ahmad Khoerun", "account": "6085035472"}, {"name": "KHESYA ALEYA PUTRI", "account": "20318791"}, {"name": "Ramdani", "account": "1210013954882"}, {"name": "Hendrawan Ahmad", "account": "3659874238"}, {"name": "Atam", "account": "3677117511"}, {"name": "Anas Jaelani", "account": "3668077336"}, {"name": "Afrizal Indarwan", "account": "1889634449"}, {"name": "FITRIANI MAIDINA", "account": "18402963"}, {"name": "Ahmad Pauji", "account": "903687790018"}, {"name": "MUHAMMAD ERVAN NOOR TSALITS", "account": "18404297"}, {"name": "Tio Saputera", "account": "903688139975"}, {"name": "Fagore Anton Armono", "account": "1370025248432"}, {"name": "Farida Apriyani", "account": "1630014441144"}, {"name": "DARMA WANI", "account": "708534278100"}, {"name": "ADITYA BUDIWAN", "account": "4660392802"}, {"name": "RIA FITRYANI", "account": "1913678494"}, {"name": "Muhammad Rafli", "account": "1170012627634"}, {"name": "Suhendra", "account": "1680004359376"}, {"name": "Ricky Ardi Suwanto", "account": "903688318801"}, {"name": "FITRI YANTI SIPAYUNG", "account": "708544606100"}, {"name": "Agus Riyanto", "account": "1984835829"}, {"name": "SIU PHEN", "account": "3693014536"}, {"name": "SIU PHEN", "account": "18644096"}, {"name": "JIMMY", "account": "8201179921"}, {"name": "Jenny Claudya Finesha Talenta", "account": "1962513386"}, {"name": "Thia Meliana", "account": "3691557387"}, {"name": "Sumiati Dian Eka Dewi", "account": "708417309800"}, {"name": "EKY MUDIYANTO", "account": "1630014232659"}, {"name": "NURLAELI", "account": "1913240790"}, {"name": "Ismail", "account": "708465972000"}, {"name": "ACHYAR HIDAYAT", "account": "764098199000"}, {"name": "Agus Setiawan", "account": "1180014325392"}, {"name": "Marwan Sanjaya", "account": "1180014318074"}, {"name": "KEMAL MAHISYA", "account": "1150010535500"}, {"name": "GAMALA SUPI", "account": "708156662400"}, {"name": "MASPRIYATIN", "account": "708000994700"}, {"name": "MUHAMAD R MAULANA", "account": "003674616002"}, {"name": "REHAN ABDILLAH", "account": "003675059731"}, {"name": "Wendy Andika Prabowo", "account": "41701042231501"}, {"name": "Leonardo Hendri Yawan", "account": "1150011032002"}, {"name": "AAM FUJAYANTI", "account": "1550014228152"}, {"name": "SUMARDIANSYAH", "account": "1550014228236"}, {"name": "Endang", "account": "903688252042"}, {"name": "YESI ARISKA", "account": "0018443066"}, {"name": "ARION SETIAWAN", "account": "693818101158"}, {"name": "Mayasari", "account": "1180014355670"}, {"name": "Junaedin", "account": "1550014228178"}, {"name": "NURAINI", "account": "903690431006"}, {"name": "Puja Azhari", "account": "3691854446"}, {"name": "PUJA AZHARI", "account": "0059636006"}, {"name": "FAJRIN USMAN ABBAS", "account": "6985259180"}, {"name": "Amar Mudzaki Tasya", "account": "0830252428"}, {"name": "Muhammad Iqbal", "account": "8375283871"}, {"name": "MUHAMMAD HAEQAL RIZKY", "account": "033801064793507"}, {"name": "Muhammad Awalludin Akmal", "account": "1550015258976"}, {"name": "Linda", "account": "1180014845159"}, {"name": "SUHENDRA", "account": "708534149100"}, {"name": "Muhammad Holil", "account": "8039911422"}, {"name": "Arune Rata Bila Bagi", "account": "8022919590"}, {"name": "Wilda Helmi", "account": "8565330710"}, {"name": "Rully Ferdyan", "account": "1630699238"}, {"name": "Indrawati", "account": "1630698983"}, {"name": "Siti Aisyah", "account": "5195126931"}, {"name": "Nofri Zoldi", "account": "3120981837"}, {"name": "Muhamad Fajri", "account": "6165187800"}, {"name": "Rachel Syahrahu", "account": "0322744224"}, {"name": "Meysy Nelu Andhini", "account": "3120982132"}, {"name": "asri rahmadani dalimunthe", "account": "8375298755"}, {"name": "pahriani", "account": "1751294196"}, {"name": "Nadia Indah Lestari", "account": "8565330884"}, {"name": "Fadhal Ahmad", "account": "3120967818"}, {"name": "MUSDAR", "account": "0322714392"}, {"name": "M. Daud Dhohiri Hakim", "account": "1966992567"}, {"name": "NUR AMJAH", "account": "1367777506"}, {"name": "Suwandi Priyatno", "account": "324401005300503"}, {"name": "MUHAMMAD ARLAN ARPIANSYAH", "account": "113001017327508"}, {"name": "MARSEL", "account": "1984681027"}, {"name": "Marsel", "account": "1680004190557"}, {"name": "TARMIN", "account": "370810074069"}, {"name": "Zahrotusahada", "account": "5215280532"}, {"name": "Deru Evans", "account": "1150010939504"}, {"name": "Muhamad Faisal Fadhil", "account": "1550015524351"}, {"name": "SRI WAHYUNI", "account": "003672312356"}, {"name": "Arif Pandapotan Nasution", "account": "1735028777"}, {"name": "SITI ZAENAB", "account": "8040324144"}, {"name": "ADE MARWAN", "account": "001701020064536"}, {"name": "FITRIA", "account": "5685022190"}, {"name": "Della Puspita", "account": "4500544827"}, {"name": "DONE FEBRINA", "account": "8565345300"}, {"name": "MARIA FRANSISCA", "account": "8040312421"}, {"name": "Khasanah", "account": "1200015363463"}, {"name": "Suriyati", "account": "1180014835812"}, {"name": "Rinaldy Aditya", "account": "003704345051"}]};
+const STORAGE_KEY = 'rekening-control-center-v1';
+let db = loadDB();
+let editRef = null;
+
+function clone(x){ return JSON.parse(JSON.stringify(x)); }
+function loadDB(){
+  try{ const x=localStorage.getItem(STORAGE_KEY); return x?JSON.parse(x):clone(DEFAULT_DATA); }
+  catch(e){ return clone(DEFAULT_DATA); }
+}
+function saveDB(){ localStorage.setItem(STORAGE_KEY,JSON.stringify(db)); refreshAll(); }
+function normalizeAccount(v){ return String(v||'').replace(/\D/g,''); }
+function statusOf(cat){
+  const c=cat.toUpperCase();
+  if(c.includes('BERMASALAH')) return ['Bermasalah','problem'];
+  if(c.includes('DIKEMBALIKAN')) return ['Dikembalikan','return'];
+  return ['Aktif','active'];
+}
+function allRows(){
+  const out=[];
+  Object.entries(db).forEach(([category,rows])=>rows.forEach((r,i)=>out.push({...r,category,index:i})));
+  return out;
+}
+function esc(s){ return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function tag(cat){
+  const [txt,cls]=statusOf(cat); return `<span class="tag tag-${cls}">${txt}</span>`;
+}
+function refreshAll(){
+  renderStats(); renderSummary(); fillCategories(); renderManage();
+  document.getElementById('dbBadge').textContent = `${allRows().length.toLocaleString('id-ID')} rekening tersimpan`;
+}
+function renderStats(){
+  const rows=allRows(); let a=0,p=0,r=0;
+  rows.forEach(x=>{const s=statusOf(x.category)[1]; if(s==='active')a++; else if(s==='problem')p++; else r++;});
+  statTotal.textContent=rows.length.toLocaleString('id-ID'); statActive.textContent=a.toLocaleString('id-ID'); statProblem.textContent=p.toLocaleString('id-ID'); statReturned.textContent=r.toLocaleString('id-ID');
+}
+function renderSummary(){
+  summaryBody.innerHTML=Object.entries(db).map(([c,rows])=>`<tr><td>${esc(c)}</td><td><b>${rows.length}</b></td><td>${tag(c)}</td></tr>`).join('');
+}
+function fillCategories(){
+  const cats=Object.keys(db);
+  categoryFilter.innerHTML='<option value="">Semua kategori</option>'+cats.map(c=>`<option>${esc(c)}</option>`).join('');
+  fCategory.innerHTML=cats.map(c=>`<option>${esc(c)}</option>`).join('');
+}
+function renderManage(){
+  const q=(searchInput.value||'').toLowerCase().trim(), cat=categoryFilter.value;
+  let rows=allRows().filter(r=>(!cat||r.category===cat)&&(!q||r.name.toLowerCase().includes(q)||r.account.includes(q)));
+  manageCount.textContent=`Menampilkan ${rows.length.toLocaleString('id-ID')} dari ${allRows().length.toLocaleString('id-ID')} data`;
+  manageBody.innerHTML=rows.map(r=>`<tr><td><b>${esc(r.name)}</b></td><td>${esc(r.account)}</td><td>${esc(r.category)}</td><td>${tag(r.category)}</td><td><button class="iconbtn edit" onclick='openEdit(${JSON.stringify(r.category)},${r.index})'>Edit</button> <button class="iconbtn del" onclick='deleteEntry(${JSON.stringify(r.category)},${r.index})'>Hapus</button></td></tr>`).join('') || '<tr><td colspan="5">Data tidak ditemukan.</td></tr>';
+}
+function openAdd(){ editRef=null; modalTitle.textContent='Tambah Rekening'; fName.value=''; fAccount.value=''; fCategory.selectedIndex=0; editModal.classList.add('show'); }
+function openEdit(cat,index){ editRef={cat,index}; const r=db[cat][index]; modalTitle.textContent='Edit Rekening'; fName.value=r.name; fAccount.value=r.account; fCategory.value=cat; editModal.classList.add('show'); }
+function closeModal(){ editModal.classList.remove('show'); }
+function saveEntry(){
+  const name=fName.value.trim(), account=normalizeAccount(fAccount.value), category=fCategory.value;
+  if(!name||account.length<6) return alert('Nama dan nomor rekening belum valid.');
+  if(editRef){ db[editRef.cat].splice(editRef.index,1); }
+  db[category] ??= [];
+  db[category].push({name,account});
+  saveDB(); closeModal();
+}
+function deleteEntry(cat,index){
+  const r=db[cat][index]; if(!confirm(`Hapus ${r.name} - ${r.account}?`)) return;
+  db[cat].splice(index,1); saveDB();
+}
+function processReport(){
+  const text=reportInput.value;
+  if(!text.trim()) return alert('Tempel laporan baru terlebih dahulu.');
+
+  const matches=[...text.matchAll(/(?<!\d)(\d[\d\s.-]{5,20}\d)(?!\d)/g)];
+  const found=[];
+  const seen=new Set();
+
+  matches.forEach(m=>{
+    const acc=normalizeAccount(m[1]);
+    if(acc.length<7 || seen.has(acc)) return;
+    seen.add(acc);
+
+    const start=Math.max(0,m.index-55);
+    const end=Math.min(text.length,m.index+m[0].length+55);
+
+    found.push({
+      account:acc,
+      context:text.slice(start,end).replace(/\s+/g,' ').trim()
+    });
+  });
+
+  const index=new Map();
+  allRows().forEach(r=>{
+    if(!index.has(r.account)) index.set(r.account,[]);
+    index.get(r.account).push(r);
+  });
+
+  let matched=0;
+  let unknown=0;
+  let alertCount=0;
+  let html='';
+  const matchedRows=[];
+
+  found.forEach(x=>{
+    const hits=index.get(x.account)||[];
+
+    if(!hits.length){
+      unknown++;
+      html+=`
+        <tr>
+          <td><b>${x.account}</b></td>
+          <td>-</td>
+          <td>-</td>
+          <td><span class="tag tag-unknown">Tidak ada di database</span></td>
+          <td>${esc(x.context)}</td>
+        </tr>`;
+      return;
+    }
+
+    hits.forEach(h=>{
+      matched++;
+
+      const status=statusOf(h.category);
+      const statusClass=status[1];
+
+      if(statusClass!=='active') alertCount++;
+
+      matchedRows.push({
+        name:h.name,
+        account:x.account,
+        category:h.category,
+        statusText:status[0],
+        statusClass:statusClass,
+        context:x.context
+      });
+
+      html+=`
+        <tr>
+          <td><b>${x.account}</b></td>
+          <td>${esc(h.name)}</td>
+          <td>${esc(h.category)}</td>
+          <td>${tag(h.category)}</td>
+          <td>${esc(x.context)}</td>
+        </tr>`;
+    });
+  });
+
+  resultBody.innerHTML=html||'<tr><td colspan="5">Tidak ada nomor rekening yang berhasil dideteksi.</td></tr>';
+
+  rDetected.textContent=found.length;
+  rMatched.textContent=matched;
+  rUnknown.textContent=unknown;
+  rAlert.textContent=alertCount;
+
+  renderMatchedResults(matchedRows);
+
+  if(matchedRows.length){
+    document.getElementById('matchedSection').scrollIntoView({
+      behavior:'smooth',
+      block:'start'
+    });
+  }
+}
+
+function renderMatchedResults(rows){
+  const section=document.getElementById('matchedSection');
+  const body=document.getElementById('matchedBody');
+  const info=document.getElementById('matchedInfo');
+  const badge=document.getElementById('matchedTotalBadge');
+
+  if(!rows.length){
+    section.style.display='none';
+    body.innerHTML='';
+    info.textContent='0 rekening ditemukan dari laporan baru.';
+    badge.textContent='0';
+    window.lastMatchedRows=[];
+    return;
+  }
+
+  window.lastMatchedRows=rows;
+  section.style.display='block';
+  badge.textContent=rows.length;
+  info.textContent=`${rows.length} data rekening milik kita ditemukan dari laporan baru.`;
+
+  body.innerHTML=rows.map((r,i)=>{
+    const rowClass=
+      r.statusClass==='problem' ? 'matched-row-problem' :
+      r.statusClass==='return' ? 'matched-row-return' :
+      'matched-row-active';
+
+    return `
+      <tr class="${rowClass}">
+        <td><b>${i+1}</b></td>
+        <td><b>${esc(r.name)}</b></td>
+        <td class="match-account">${esc(r.account)}</td>
+        <td>${esc(r.category)}</td>
+        <td>${tag(r.category)}</td>
+        <td>${esc(r.context)}</td>
+      </tr>`;
+  }).join('');
+}
+
+async function copyMatched(){
+  const rows=window.lastMatchedRows||[];
+
+  if(!rows.length){
+    alert('Belum ada rekening yang terdeteksi.');
+    return;
+  }
+
+  const text=rows.map((r,i)=>
+    `${i+1}. ${r.name} | ${r.account} | ${r.category} | ${r.statusText}`
+  ).join('\n');
+
+  try{
+    await navigator.clipboard.writeText(text);
+
+    const btn=document.getElementById('copyMatchedBtn');
+    const old=btn.textContent;
+    btn.textContent='Berhasil Dicopy';
+    btn.classList.add('copy-ok');
+
+    setTimeout(()=>{
+      btn.textContent=old;
+      btn.classList.remove('copy-ok');
+    },1600);
+  }catch(e){
+    const area=document.createElement('textarea');
+    area.value=text;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+    alert('Data terdeteksi berhasil dicopy.');
+  }
+}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='backup-rekening-'+new Date().toISOString().slice(0,10)+'.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+function restoreData(){
+  const f=restoreFile.files[0]; if(!f) return alert('Pilih file JSON backup.');
+  const rd=new FileReader(); rd.onload=()=>{ try{ const x=JSON.parse(rd.result); if(!x||typeof x!=='object')throw 0; db=x; saveDB(); alert('Database berhasil direstore.'); }catch(e){ alert('File backup tidak valid.'); } }; rd.readAsText(f);
+}
+function resetDefault(){ if(confirm('Reset semua perubahan dan kembali ke data awal?')){ db=clone(DEFAULT_DATA); saveDB(); } }
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(b.dataset.tab).classList.add('active');});
+editModal.addEventListener('click',e=>{if(e.target===editModal)closeModal();});
+refreshAll();
+</script>
+</body>
+</html>
